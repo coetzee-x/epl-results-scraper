@@ -101,14 +101,19 @@ def calculate_home_away_form(ndarray):
         else: form.append("D")
     return ",".join(form)
 
-def calculate_position(datas, season):
+def calculate_position(datas):
     for data in datas:
         position = 1
         team = data["team"]
         points = data["points"]
         gd = data["goal_difference"]
+        goals_for = data["goals_for"]
         for sub_item in datas:
             if sub_item["team"] != team and sub_item["points"] > points: position += 1
+            elif sub_item["team"] != team and sub_item["points"] == points:
+                if sub_item["goal_difference"] > gd: position += 1
+                elif sub_item["goal_difference"] == gd:
+                    if sub_item["goals_for"] > goals_for: position += 1
         data["position"] = position
 
 season_groups = pandas.read_csv(f"premier_league_results_20250618211700.csv").groupby("season")
@@ -132,10 +137,10 @@ for season_name, season_data in season_groups:
         away_points = calculate_points(away_games[["away_score", "home_score"]].values)
         home_results = calculate_results(home_games[["home_score", "away_score"]].values)
         away_results = calculate_results(away_games[["away_score", "home_score"]].values)
-        home_goals_for = home_games["home_score"].sum()
-        home_goals_against = home_games["away_score"].sum()
-        away_goals_for = away_games["away_score"].sum()
-        away_goals_against = away_games["home_score"].sum()
+        home_goals_for = int(home_games["home_score"].sum())
+        home_goals_against = int(home_games["away_score"].sum())
+        away_goals_for = int(away_games["away_score"].sum())
+        away_goals_against = int(away_games["home_score"].sum())
         season_form = calculate_season_form(all_games[["home_team", "away_team", "home_score", "away_score"]].values, team)
         home_form = calculate_home_away_form(home_games[["home_score", "away_score"]].values)
         away_form = calculate_home_away_form(away_games[["away_score", "home_score"]].values)
@@ -169,12 +174,12 @@ for season_name, season_data in season_groups:
             "away_form": away_form
         })
 
-    calculate_position(premier_league_season_datas, season_name)
+    calculate_position(premier_league_season_datas)
     premier_league_season_insights.extend(premier_league_season_datas)
 
 print(f"Finished table calculations for season: {season_name}")
 
 date_time_stamp = datetime.now().strftime("%Y%m%d%H%M%S")
-pandas.DataFrame(premier_league_season_insights).sort_values(["season", "points"], ascending=[True, False]).to_csv(f"premier_league_season_insights_{date_time_stamp}.csv", index=False)
+pandas.DataFrame(premier_league_season_insights).sort_values(["season", "position"], ascending=[True, True]).to_csv(f"premier_league_season_insights_{date_time_stamp}.csv", index=False)
 print("Premier League tables calculated and saved to file.")
         
